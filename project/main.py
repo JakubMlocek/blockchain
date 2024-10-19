@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import requests
 
 from block import BLOCKCHAIN, Block
@@ -16,7 +16,14 @@ def mine_block():
     or to be invoked by the "owner" of the machine (user behind the node).
     """
     data = request.json['data'] # data to store in the block
-    pass
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    prev_hash = BLOCKCHAIN[-1].hash if len(BLOCKCHAIN) > 0 else b'\x00' * 64
+    new_block = Block(data=data, prev_hash=prev_hash)
+    new_block.mine()
+
+
 
 @app.post('/nodes')
 def add_node():
