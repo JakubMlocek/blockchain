@@ -4,6 +4,7 @@ import requests
 from block import BLOCKCHAIN, Block
 
 app = Flask(__name__)
+PORT_USED = 5000
 
 NODES = [] # a list of IPs with ports (e.g. 12.34.56.78:1337) as strings
 
@@ -31,7 +32,9 @@ def add_node():
     Join new node to the network - respond with IPs of known nodes and send the entire blockchain.
     This is called on the nodes already in the blockchain.
     """
-    pass
+    ip = f'{request.remote_addr}:{PORT_USED}'
+    NODES.append(ip)
+    return NODES[:-1]
 
 @app.post('/init/<ip>')
 def init_node(ip):
@@ -40,7 +43,18 @@ def init_node(ip):
     IP can be None if this is the first node in the blockchain.
     This is called on a node that is NOT in the blockchain yet.
     """
-    pass
+    def call_node(ip):
+        resp = requests.post(f'http://{ip}/nodes')
+        if resp.status_code != 200:
+            return
+        for node in resp.json():
+            if node in NODES:
+                continue
+            NODES.append(node)
+            call_node(node)
+
+    call_node(ip)
+    return NODES
 
 
 @app.get('/blocks')
@@ -78,11 +92,11 @@ def store_data():
 
     if propagate:
         for node in NODES:
-            requests.post(f'http://{node}/blocks', {'data': data, propagate: False})
+            requests.post(f'http://{node}/blocks', json={'data': data, propagate: False})
 
     # start mining or do something about this block below...
     pass
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=PORT_USED)
