@@ -8,3 +8,7 @@ W zasadzie cała komunikacja to byłoby użycie *requests*, wywoływanie
 - requests.post()
 
 z argumentami odpowiednimi. Jakieś opisy tego co endpointy powinny robić są w kodzie.
+
+
+Przykład dołączania node'a:
+![img.png](screenshots/adding_node.png)
