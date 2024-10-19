@@ -18,12 +18,7 @@ def mine_block():
     data = request.json['data'] # data to store in the block
     pass
 
-@app.post('/block')
-def receive_new_block():
-    """Receive new block, try to achieve consensus in the network"""
-    pass
-
-@app.post('/node')
+@app.post('/nodes')
 def add_node():
     """
     Join new node to the network - respond with IPs of known nodes and send the entire blockchain.
@@ -73,8 +68,6 @@ def add_block():
 
     # start mining or do something about this block below...
     pass
-
-
 
 
 if __name__ == '__main__':
