@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import requests
 
 from block import BLOCKCHAIN, Block
@@ -16,13 +16,13 @@ def mine_block():
     or to be invoked by the "owner" of the machine (user behind the node).
     """
     data = request.json['data'] # data to store in the block
-    block = Block(data, BLOCKCHAIN[-1].prev_hash if len(BLOCKCHAIN) > 0 else '\x00' * 64)
-    block.mine()
-    # notify all other nodes that new block has been mined
-    for node in NODES:
-        response = requests.post(f'http://{node}/blocks', block.json())
-        # here consensus should be checked (whether all responses are OK and if not - do some voting)
-    pass
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    prev_hash = BLOCKCHAIN[-1].hash if len(BLOCKCHAIN) > 0 else b'\x00' * 64
+    new_block = Block(data=data, prev_hash=prev_hash)
+    new_block.mine()
+
 
 
 @app.post('/nodes')
@@ -57,6 +57,7 @@ def get_block(id):
     Return a block with specific ID.
     """
     pass
+
 
 @app.post('/blocks')
 def add_block():
