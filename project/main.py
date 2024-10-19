@@ -72,6 +72,13 @@ def get_block(id):
 
 @app.post('/blocks')
 def add_block():
+    block = Block.from_json(request.json)
+
+    # verify block hashes are OK, check for consensus and add to blockchain if all is OK
+    pass
+
+@app.post('/data')
+def store_data():
     """
     Anyone can call this to add some data to the blockchain.
     The node that receives a request to this endpoint should propagate it to other nodes if it is the first one to
