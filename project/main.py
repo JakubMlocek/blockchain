@@ -4,9 +4,35 @@ import requests
 from block import BLOCKCHAIN, Block
 
 app = Flask(__name__)
-PORT_USED = 5000
 
 NODES = [] # a list of IPs with ports (e.g. 12.34.56.78:1337) as strings
+
+@app.post('/init/<ip>')
+def init_node(ip):
+    """
+    Join the blockchain. IP is an IP of a node known to be in the blockchain.
+    IP can be None if this is the first node in the blockchain.
+    This is called on a node that is NOT in the blockchain yet.
+    """
+    client_ip = request.remote_addr if len(NODES) > 0 else None
+    client_port = request.environ.get('REMOTE_PORT')
+    client_string = f"{client_ip}:{str(client_port)}"
+
+    if client_string not in NODES:
+        NODES.append(client_string)
+        return jsonify({'message': 'Node initialized', 'client_ip': client_ip, 'client_port': client_port, 'known_node_ip': ip})
+    else:
+        return jsonify({'error': 'Node already exists'}), 400
+
+
+@app.post('/nodes')
+def add_node():
+    """
+    Join new node to the network - respond with IPs of known nodes and send the entire blockchain.
+    This is called on the nodes already in the blockchain.
+    """
+    pass
+
 
 @app.post('/mine')
 def mine_block():
@@ -21,41 +47,10 @@ def mine_block():
         return jsonify({'error': 'No data provided'}), 400
 
     prev_hash = BLOCKCHAIN[-1].hash if len(BLOCKCHAIN) > 0 else b'\x00' * 64
-    new_block = Block(data=data, prev_hash=prev_hash)
+    new_block = Block(data, prev_hash)
     new_block.mine()
 
-
-
-@app.post('/nodes')
-def add_node():
-    """
-    Join new node to the network - respond with IPs of known nodes and send the entire blockchain.
-    This is called on the nodes already in the blockchain.
-    """
-    ip = f'{request.remote_addr}:{PORT_USED}'
-    NODES.append(ip)
-    return NODES[:-1]
-
-@app.post('/init/<ip>')
-def init_node(ip):
-    """
-    Join the blockchain. IP is an IP of a node known to be in the blockchain.
-    IP can be None if this is the first node in the blockchain.
-    This is called on a node that is NOT in the blockchain yet.
-    """
-    def call_node(ip):
-        resp = requests.post(f'http://{ip}/nodes')
-        if resp.status_code != 200:
-            return
-        for node in resp.json():
-            if node in NODES:
-                continue
-            NODES.append(node)
-            call_node(node)
-
-    call_node(ip)
-    return NODES
-
+    # w tym momencie jest surowy block wykopany, trzeba poinformować resztę o nim
 
 @app.get('/blocks')
 def get_blocks():
@@ -92,11 +87,11 @@ def store_data():
 
     if propagate:
         for node in NODES:
-            requests.post(f'http://{node}/blocks', json={'data': data, propagate: False})
+            requests.post(f'http://{node}/blocks', {'data': data, propagate: False})
 
     # start mining or do something about this block below...
     pass
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=PORT_USED)
+    app.run(debug=True)
