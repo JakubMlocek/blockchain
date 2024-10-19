@@ -63,7 +63,7 @@ def mine_block():
     prev_hash = BLOCKCHAIN[-1].hash if len(BLOCKCHAIN) > 0 else b'\x00' * 64
     new_block = Block(data, prev_hash)
     new_block.mine()
-
+    return new_block
     # w tym momencie jest surowy block wykopany, trzeba poinformować resztę o nim
 
 @app.get('/blocks')
@@ -77,9 +77,15 @@ def get_blocks():
 @app.get('/blocks/<id>')
 def get_block(id):
     """
-    Return a block with specific ID.
+    Return a block with specific ID. The ID is the number of block in the BLOCKCHAIN list.
     """
-    pass
+    id_int = int(id)
+
+    if id_int < 0 or id_int >= len(BLOCKCHAIN):
+        return jsonify({'error': 'Block ID out of range'}), 404
+
+    block = BLOCKCHAIN[id_int]
+    return jsonify({'block': repr(block)}), 200
 
 
 @app.post('/blocks')
