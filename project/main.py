@@ -14,7 +14,7 @@ def init_node(ip):
     IP can be None if this is the first node in the blockchain.
     This is called on a node that is NOT in the blockchain yet.
     """
-    client_ip = request.remote_addr
+    client_ip = request.remote_addr if len(NODES) > 0 else None
     client_port = request.environ.get('REMOTE_PORT')
     client_string = f"{client_ip}:{str(client_port)}"
 
@@ -22,7 +22,7 @@ def init_node(ip):
         NODES.append(client_string)
         return jsonify({'message': 'Node initialized', 'client_ip': client_ip, 'client_port': client_port, 'known_node_ip': ip})
     else:
-        return jsonify({'error': 'Node already exists'}), 400  
+        return jsonify({'error': 'Node already exists'}), 400
 
 
 @app.post('/nodes')
@@ -50,9 +50,7 @@ def mine_block():
     new_block = Block(data, prev_hash)
     new_block.mine()
 
-
-
-
+    # w tym momencie jest surowy block wykopany, trzeba poinformować resztę o nim
 
 @app.get('/blocks')
 def get_blocks():
