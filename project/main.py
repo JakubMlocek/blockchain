@@ -28,11 +28,11 @@ def init_node(addr):
 
     blockchain = post_nodes(addr)
     BLOCKCHAIN.extend([Block.from_json(block) for block in blockchain])
-    return NODES
+    return jsonify({NODES})
 
 @app.get('/nodes')
 def get_nodes():
-    return NODES
+    return jsonify({NODES})
 
 @app.post('/nodes')
 def add_node():
