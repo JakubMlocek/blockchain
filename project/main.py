@@ -1,12 +1,14 @@
 from flask import Flask, request, jsonify
 import requests
-
+import threading
+import time
 from block import BLOCKCHAIN, Block
 
 app = Flask(__name__)
 PORT = 5000
 
-NODES = [] # a list of IPs with ports (e.g. 12.34.56.78:1337) as strings
+NODES = []  # a list of IPs with ports (e.g. 12.34.56.78:1337) as strings
+BRANCHES = {}  # Dictionary to hold different blockchain branches by their starting block hash
 
 @app.post('/init/<addr>')
 def init_node(addr):
@@ -47,7 +49,6 @@ def add_node():
         'blockchain': [block.json() for block in BLOCKCHAIN]
     }
 
-
 @app.post('/mine')
 def mine_block():
     """
@@ -56,23 +57,79 @@ def mine_block():
     We can make this either automatic (node starts mining when it receives a query to store new data),
     or to be invoked by the "owner" of the machine (user behind the node).
     """
-    data = request.json['data'] # data to store in the block
+    data = request.json['data']  # data to store in the block
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
     prev_hash = BLOCKCHAIN[-1].hash if len(BLOCKCHAIN) > 0 else b'\x00' * 64
     new_block = Block(data, prev_hash)
     new_block.mine()
-    return new_block
-    # w tym momencie jest surowy block wykopany, trzeba poinformować resztę o nim
+    BLOCKCHAIN.append(new_block)
+
+    # Propagate the mined block to all other nodes
+    for node in NODES:
+        try:
+            requests.post(f'http://{node}/store_data', json=new_block.json())
+        except requests.exceptions.RequestException:
+            continue
+
+    return jsonify(new_block.json()), 200
+
+@app.post('/store_data')
+def store_data():
+    """
+    Anyone can call this to add some data to the blockchain.
+    The node that receives a request to this endpoint should propagate it to other nodes if it is the first one to
+    receive the call to this endpoint (indicated by "propagate" flag in the request).
+    """
+    json_data = request.json
+    if 'prev_hash' not in json_data:
+        return jsonify({'error': 'Invalid block data'}), 400
+
+    new_block = Block.from_json(json_data)
+    prev_hash = new_block.prev_hash.hex()
+
+    if len(BLOCKCHAIN) == 0 or BLOCKCHAIN[-1].hash == new_block.prev_hash:
+        BLOCKCHAIN.append(new_block)
+    else:
+        # If there's a conflict, we add to a branch
+        if prev_hash not in BRANCHES:
+            BRANCHES[prev_hash] = [new_block]
+        else:
+            BRANCHES[prev_hash].append(new_block)
+
+    # Start consensus mechanism after a short delay to determine the longest valid chain
+    threading.Timer(10.0, resolve_conflicts).start()
+
+    return jsonify({'status': 'Block received'}), 200
+
+def resolve_conflicts():
+    """
+    Resolve conflicts by adopting the longest chain available.
+    """
+    global BLOCKCHAIN
+
+    longest_chain = BLOCKCHAIN
+    # Iterate over all branches to find the longest valid chain
+    for branch_start, branch_blocks in BRANCHES.items():
+        potential_chain = BLOCKCHAIN[:]
+        for block in branch_blocks:
+            if potential_chain[-1].hash == block.prev_hash:
+                potential_chain.append(block)
+        if len(potential_chain) > len(longest_chain):
+            longest_chain = potential_chain
+
+    # If a longer chain is found, adopt it
+    if longest_chain != BLOCKCHAIN:
+        BLOCKCHAIN = longest_chain
+        print("Blockchain updated to the longest chain.")
 
 @app.get('/blocks')
 def get_blocks():
     """
     Return a serialized blockchain.
     """
-    return jsonify({'blockchain': [repr(block) for block in BLOCKCHAIN]}), 200
-
+    return jsonify([block.json() for block in BLOCKCHAIN]), 200
 
 @app.get('/blocks/<id>')
 def get_block(id):
@@ -87,40 +144,8 @@ def get_block(id):
     block = BLOCKCHAIN[id_int]
     return jsonify({'block': repr(block)}), 200
 
-
-def add_block():
-    """
-    Add a block to the blockchain after verifying it.
-    """
-    block_data = request.json
-    block = Block.from_json(block_data)
-    # Verify block hashes are OK, check for consensus, and add to blockchain if all is OK
-    if block.verify_hash():
-        BLOCKCHAIN.append(block)
-        return jsonify({'message': 'Block successfully added!'}), 200
-    else:
-        return jsonify({'error': 'Block verification failed'}), 400
-
-
-@app.post('/data')
-def store_data():
-    """
-    Anyone can call this to add some data to the blockchain.
-    The node that receives a request to this endpoint should propagate it to other nodes if it is the first one to
-    receive the call to this endpoint (indicated by "propagate" flag in the request).
-    """
-    propagate = request.json['propagate']
-    data = request.json['data']
-
-    if propagate:
-        for node in NODES:
-            requests.post(f'http://{node}/blocks', {'data': data, propagate: False})
-
-    # start mining or do something about this block below...
-    pass
-
-
 if __name__ == '__main__':
+    # Initializing blockchain with three blocks
     block1 = Block("some text", b'\x00' * 64)
     block1.mine()
     BLOCKCHAIN.append(block1)
@@ -131,10 +156,3 @@ if __name__ == '__main__':
     block3.mine()
     BLOCKCHAIN.append(block3)
     app.run(debug=True, host='0.0.0.0', port=PORT)
-
-    # usefull commands:
-    # Do budowania:
-    #     docker-compose up -d --build
-
-    # Pushowanie nowych nodów:
-    #     curl -X POST http://localhost:1234/init/app2:5000
