@@ -79,11 +79,13 @@ def get_block(id):
     """
     Return a block with specific ID. The ID is the number of block in the BLOCKCHAIN list.
     """
-    if id < 0 or id >= len(BLOCKCHAIN):
-        print("incorrect id")
-        return None
-    print(BLOCKCHAIN[id])
-    return BLOCKCHAIN[id]
+    id_int = int(id)
+
+    if id_int < 0 or id_int >= len(BLOCKCHAIN):
+        return jsonify({'error': 'Block ID out of range'}), 404
+
+    block = BLOCKCHAIN[id_int]
+    return jsonify({'block': repr(block)}), 200
 
 
 @app.post('/blocks')
