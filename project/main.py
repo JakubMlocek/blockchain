@@ -71,7 +71,7 @@ def get_blocks():
     """
     Return a serialized blockchain.
     """
-    pass
+    return jsonify({'blockchain': [repr(block) for block in BLOCKCHAIN]}), 200
 
 
 @app.get('/blocks/<id>')
@@ -88,12 +88,19 @@ def get_block(id):
     return jsonify({'block': repr(block)}), 200
 
 
-@app.post('/blocks')
 def add_block():
-    block = Block.from_json(request.json)
+    """
+    Add a block to the blockchain after verifying it.
+    """
+    block_data = request.json
+    block = Block.from_json(block_data)
+    # Verify block hashes are OK, check for consensus, and add to blockchain if all is OK
+    if block.verify_hash():
+        BLOCKCHAIN.append(block)
+        return jsonify({'message': 'Block successfully added!'}), 200
+    else:
+        return jsonify({'error': 'Block verification failed'}), 400
 
-    # verify block hashes are OK, check for consensus and add to blockchain if all is OK
-    pass
 
 @app.post('/data')
 def store_data():
@@ -124,3 +131,10 @@ if __name__ == '__main__':
     block3.mine()
     BLOCKCHAIN.append(block3)
     app.run(debug=True, host='0.0.0.0', port=PORT)
+
+    # usefull commands:
+    # Do budowania:
+    #     docker-compose up -d --build
+
+    # Pushowanie nowych nodów:
+    #     curl -X POST http://localhost:1234/init/app2:5000
