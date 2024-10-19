@@ -16,7 +16,14 @@ def mine_block():
     or to be invoked by the "owner" of the machine (user behind the node).
     """
     data = request.json['data'] # data to store in the block
+    block = Block(data, BLOCKCHAIN[-1].prev_hash if len(BLOCKCHAIN) > 0 else '\x00' * 64)
+    block.mine()
+    # notify all other nodes that new block has been mined
+    for node in NODES:
+        response = requests.post(f'http://{node}/blocks', block.json())
+        # here consensus should be checked (whether all responses are OK and if not - do some voting)
     pass
+
 
 @app.post('/nodes')
 def add_node():
@@ -51,9 +58,15 @@ def get_block(id):
     """
     pass
 
-
 @app.post('/blocks')
 def add_block():
+    block = Block.from_json(request.json)
+
+    # verify block hashes are OK, check for consensus and add to blockchain if all is OK
+    pass
+
+@app.post('/data')
+def store_data():
     """
     Anyone can call this to add some data to the blockchain.
     The node that receives a request to this endpoint should propagate it to other nodes if it is the first one to

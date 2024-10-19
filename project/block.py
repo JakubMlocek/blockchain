@@ -36,6 +36,21 @@ class Block:
             return False
         return True
 
+    @staticmethod
+    def from_json(json_data):
+        block = Block(json_data['data'], bytes.fromhex(json_data['prev_hash']))
+        block.hash = bytes.fromhex(json_data['hash'])
+        block.nonce = json_data['nonce']
+        return block
+
+    def json(self):
+        return {
+            'data': self.data,
+            'prev_hash': self.prev_hash.hex(),
+            'hash': self.hash.hex(),
+            'nonce': self.nonce
+        }
+
     def __repr__(self):
         return str({
             'data': self.data,
