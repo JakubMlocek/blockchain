@@ -7,6 +7,33 @@ app = Flask(__name__)
 
 NODES = [] # a list of IPs with ports (e.g. 12.34.56.78:1337) as strings
 
+@app.post('/init/<ip>')
+def init_node(ip):
+    """
+    Join the blockchain. IP is an IP of a node known to be in the blockchain.
+    IP can be None if this is the first node in the blockchain.
+    This is called on a node that is NOT in the blockchain yet.
+    """
+    client_ip = request.remote_addr
+    client_port = request.environ.get('REMOTE_PORT')
+    client_string = f"{client_ip}:{str(client_port)}"
+
+    if client_string not in NODES:
+        NODES.append(client_string)
+        return jsonify({'message': 'Node initialized', 'client_ip': client_ip, 'client_port': client_port, 'known_node_ip': ip})
+    else:
+        return jsonify({'error': 'Node already exists'}), 400  
+
+
+@app.post('/nodes')
+def add_node():
+    """
+    Join new node to the network - respond with IPs of known nodes and send the entire blockchain.
+    This is called on the nodes already in the blockchain.
+    """
+    pass
+
+
 @app.post('/mine')
 def mine_block():
     """
@@ -20,27 +47,11 @@ def mine_block():
         return jsonify({'error': 'No data provided'}), 400
 
     prev_hash = BLOCKCHAIN[-1].hash if len(BLOCKCHAIN) > 0 else b'\x00' * 64
-    new_block = Block(data=data, prev_hash=prev_hash)
+    new_block = Block(data, prev_hash)
     new_block.mine()
 
 
 
-@app.post('/nodes')
-def add_node():
-    """
-    Join new node to the network - respond with IPs of known nodes and send the entire blockchain.
-    This is called on the nodes already in the blockchain.
-    """
-    pass
-
-@app.post('/init/<ip>')
-def init_node(ip):
-    """
-    Join the blockchain. IP is an IP of a node known to be in the blockchain.
-    IP can be None if this is the first node in the blockchain.
-    This is called on a node that is NOT in the blockchain yet.
-    """
-    pass
 
 
 @app.get('/blocks')
