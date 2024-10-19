@@ -4,26 +4,35 @@ import requests
 from block import BLOCKCHAIN, Block
 
 app = Flask(__name__)
+PORT = 5000
 
 NODES = [] # a list of IPs with ports (e.g. 12.34.56.78:1337) as strings
 
-@app.post('/init/<ip>')
-def init_node(ip):
+@app.post('/init/<addr>')
+def init_node(addr):
     """
     Join the blockchain. IP is an IP of a node known to be in the blockchain.
     IP can be None if this is the first node in the blockchain.
     This is called on a node that is NOT in the blockchain yet.
     """
-    client_ip = request.remote_addr if len(NODES) > 0 else None
-    client_port = request.environ.get('REMOTE_PORT')
-    client_string = f"{client_ip}:{str(client_port)}"
+    def post_nodes(node):
+        resp = requests.post(f'http://{node}/nodes')
+        if resp.status_code != 200:
+            return
+        NODES.append(node)
+        nodes = resp.json()['nodes']
+        for n in nodes:
+            if n not in NODES:
+                post_nodes(n)
+        return resp.json()['blockchain']
 
-    if client_string not in NODES:
-        NODES.append(client_string)
-        return jsonify({'message': 'Node initialized', 'client_ip': client_ip, 'client_port': client_port, 'known_node_ip': ip})
-    else:
-        return jsonify({'error': 'Node already exists'}), 400
+    blockchain = post_nodes(addr)
+    BLOCKCHAIN.extend([Block.from_json(block) for block in blockchain])
+    return NODES
 
+@app.get('/nodes')
+def get_nodes():
+    return NODES
 
 @app.post('/nodes')
 def add_node():
@@ -31,7 +40,12 @@ def add_node():
     Join new node to the network - respond with IPs of known nodes and send the entire blockchain.
     This is called on the nodes already in the blockchain.
     """
-    pass
+    if f'{request.remote_addr}:{PORT}' not in NODES:
+        NODES.append(f'{request.remote_addr}:{PORT}')
+    return {
+        'nodes': NODES[:-1],
+        'blockchain': [block.json() for block in BLOCKCHAIN]
+    }
 
 
 @app.post('/mine')
@@ -94,4 +108,13 @@ def store_data():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    block1 = Block("some text", b'\x00' * 64)
+    block1.mine()
+    BLOCKCHAIN.append(block1)
+    block2 = Block("more text", BLOCKCHAIN[-1].hash)
+    block2.mine()
+    BLOCKCHAIN.append(block2)
+    block3 = Block("even more text", BLOCKCHAIN[-1].hash)
+    block3.mine()
+    BLOCKCHAIN.append(block3)
+    app.run(debug=True, host='0.0.0.0', port=PORT)
