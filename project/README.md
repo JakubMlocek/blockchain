@@ -6,12 +6,14 @@
     - requests.post()
 
 ## Implementacja bloków itd. w block.py (przykład wykorzystania na dole.).
+    -Rozwiazywanie konfiktow polega na wybraniu najdluzszego z dostepnych lancuchow
 
 ## Dostepne funkcjonalnosci:
 
 Inicjalizacja nodów:
-        
+
     curl -X POST http://localhost:1234/init/app1:5000
+    curl -X POST http://localhost:1234/init/app2:5000
 
 Wykopanie bloku:
 
