@@ -34,7 +34,6 @@ Dodawanie bloku otrzymanego od innego node:
         "nonce": <nonce>
 }'
 
-
 ## Uruchomienie środowiska:
 
 Aby uruchomic dwa przykladowe wezly nalezy w katalogu projektu skorzystac z narzedzia docker-compose:
