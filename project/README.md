@@ -1,20 +1,13 @@
-# Potężny blockchain
-Propozycja jak to zrobić:
-1. Komunikacja jako zwykłe HTTP (szkic endpointów w main.py),
-2. Propozycja implementacji bloków i liczenia hashów itd. w block.py (tam też jest przykład użycia na dole).
+# Implementacja wlasnego blockchain
 
-W zasadzie cała komunikacja to byłoby użycie *requests*, wywoływanie
-- requests.get()
-- requests.post()
+## Komunikacja jako HTTP (szkic endpointów w main.py),
+    Cała komunikacja poprzez użycie
+    - requests.get()
+    - requests.post()
 
-z argumentami odpowiednimi. Jakieś opisy tego co endpointy powinny robić są w kodzie.
+## Implementacja bloków itd. w block.py (przykład wykorzystania na dole.).
 
-
-Przykład dołączania node'a:
-![img.png](screenshots/adding_node.png)
-
-
-## Komendy do testowania:
+## Dostepne funkcjonalnosci:
 
 Inicjalizacja nodów:
         
@@ -41,4 +34,17 @@ Dodawanie bloku otrzymanego od innego node:
         "nonce": <nonce>
 }'
 
-Skrypt demo.sh demonstruje funkcjonalnosci utworzonej sieci blockchain
+
+## Uruchomienie środowiska:
+
+Aby uruchomic dwa przykladowe wezly nalezy w katalogu projektu skorzystac z narzedzia docker-compose:
+
+    docker-compose up --build -d  
+
+Następnie mozemy korzystac z zapewnianych funkcjonalnosci lub podejrzec ich demo za pomoca:
+
+    ./demo.sh
+
+Na koniec wylaczamy srodowisko:
+
+    docker-compose down
