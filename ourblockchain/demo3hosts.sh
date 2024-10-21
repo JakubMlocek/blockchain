@@ -16,9 +16,8 @@ fi
 
 #Inicjalizacja 3 wezłow
 echo "Inicjowanie 3 węzłów w sieci blockchain..."
-curl -X POST http://localhost:1234/init/app1:5000
-curl -X POST http://localhost:1234/init/app2:5000
-curl -X POST http://localhost:1234/init/app3:5000
+curl -X POST http://localhost:1235/init/app1:5000
+curl -X POST http://localhost:1236/init/app1:5000
 echo -e "\n"
 
 #Wyświetlenie aktywnych węzłów
