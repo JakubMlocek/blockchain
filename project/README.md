@@ -40,3 +40,5 @@ Dodawanie bloku otrzymanego od innego node:
         "hash": "<hash from mined block>",
         "nonce": <nonce>
 }'
+
+Skrypt demo.sh demonstruje funkcjonalnosci utworzonej sieci blockchain
