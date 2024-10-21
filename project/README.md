@@ -21,6 +21,7 @@ Inicjalizacja nodów:
     curl -X POST http://localhost:1234/init/app1:5000
 
 Wykopanie bloku:
+
     curl -X POST http://localhost:1234/mine -H "Content-Type: application/json" -d '{"data": "Tutaj dane dla blocku"}'
 
 Przejrzenie bloków:
