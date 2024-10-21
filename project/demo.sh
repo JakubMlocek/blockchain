@@ -8,7 +8,7 @@ else
     echo "Usługa nie działa." 
 fi
 
-
+#Inicjalizacja 2 wezłow
 echo "Inicjowanie 2 węzłów w sieci blockchain..."
 curl -X POST http://localhost:1234/init/app1:5000
 curl -X POST http://localhost:1234/init/app2:5000
