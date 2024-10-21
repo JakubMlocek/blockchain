@@ -1,0 +1,7 @@
+Co ma robić ten blockchain:
+1. Kopanie bloku, rozpropagowywanie informacji o wykopanym bloku,
+2. Przyjęcie informacji o nowym bloku,
+3. Osiąganie konsensusu,
+4. Dołączanie do sieci nowych węzłów,
+5. Odpytywanie nodeów o jakąś informację (bo blockchain to "rozproszona baza danych"),
+6. Prośba o dopisanie jakiejś informacji do blockchaina (i wtedy node'y zaczynają kopać).

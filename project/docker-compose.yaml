@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "1234:5000"
+    environment:
+      - INSTANCE_NAME=app-instance-1
+
+  app2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "1235:5000"
+    environment:
+      - INSTANCE_NAME=app-instance-2
+
+
