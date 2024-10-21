@@ -63,6 +63,16 @@ echo "Kopanie nowego bloku z danymi przez node2:"
 curl -X POST http://localhost:1235/mine -H "Content-Type: application/json" -d '{"data": "Trzeci wykopany blok - node2"}'
 echo -e "\n"
 
+#Wykopanie nowego bloku przez node 3
+echo "Kopanie nowego bloku z danymi przez node3:"
+curl -X POST http://localhost:1236/mine -H "Content-Type: application/json" -d '{"data": "Czwarty wykopany blok - node3"}'
+echo -e "\n"
+
+#Wykopanie nowego bloku przez node 1
+echo "Kopanie nowego bloku z danymi przez node1:"
+curl -X POST http://localhost:1236/mine -H "Content-Type: application/json" -d '{"data": "Piaty wykopany blok - node1"}'
+echo -e "\n"
+
 sleep 5
 
 #Przeglądanie blockchaina
@@ -76,7 +86,6 @@ curl -X GET http://localhost:1235/blocks
 #Przeglądanie blockchaina
 echo "Bloki w łańcuchu widziane przez node3:"
 curl -X GET http://localhost:1236/blocks
-
 
 
 docker-compose down

@@ -5,3 +5,6 @@ Co ma robić ten blockchain:
 4. Dołączanie do sieci nowych węzłów,
 5. Odpytywanie nodeów o jakąś informację (bo blockchain to "rozproszona baza danych"),
 6. Prośba o dopisanie jakiejś informacji do blockchaina (i wtedy node'y zaczynają kopać).
+
+
+7. Temat smartkontraktu do wyboru
