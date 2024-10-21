@@ -61,10 +61,9 @@ echo -e "\n"
 #Wykopanie nowego bloku przez node 2
 echo "Kopanie nowego bloku z danymi przez node2:"
 curl -X POST http://localhost:1235/mine -H "Content-Type: application/json" -d '{"data": "Trzeci wykopany blok - node2"}'
-
 echo -e "\n"
 
-sleep 3
+sleep 5
 
 #Przeglądanie blockchaina
 echo "Bloki w łańcuchu widziane przez node1:"
