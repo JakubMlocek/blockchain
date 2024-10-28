@@ -15,13 +15,13 @@ else
 fi
 
 #Inicjalizacja 3 wezłow
-echo "Inicjowanie 3 węzłów w sieci blockchain..."
+echo "Inicjowanie 2 kolejnych węzłów w sieci blockchain..."
 curl -X POST http://localhost:1235/init/app1:5000
 curl -X POST http://localhost:1236/init/app1:5000
 echo -e "\n"
 
 #Wyświetlenie aktywnych węzłów
-echo "Wyświetlanie aktywnych węzłów w sieci..."
+echo "Wyświetlanie aktywnych węzłów w sieci widzianych przez node 1..."
 curl -X GET http://localhost:1234/nodes
 echo -e "\n"
 
