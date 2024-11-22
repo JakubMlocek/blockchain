@@ -13,11 +13,15 @@ contract Lottery is VRFConsumerBase {
 
     // Mapa graczy, którzy już uczestniczą
     mapping(address => bool) public hasParticipated;
+    mapping(address => uint256) public deposits;
 
     // Chainlink VRF zmienne
     bytes32 internal keyHash;
     uint256 internal fee;
     uint256 public randomResult;
+
+    // Lock do ochrony przed reentrancy
+    bool private locked = false;
 
     // Wydarzenia
     event PlayerJoined(address indexed player);
@@ -36,11 +40,12 @@ contract Lottery is VRFConsumerBase {
     function joinLottery() public payable {
         require(!isLotteryActive, "Cannot join while lottery is active");
         require(players.length < maxPlayers, "Maximum number of players reached");
-        require(!hasParticipated[msg.sender], "You already joined the lottery");
+        require(!hasParticipated[msg.sender], "You already joined the lottery with this address");
         require(msg.value == 0.01 ether, "Participation fee is 0.01 ETH");
 
         players.push(msg.sender);
         hasParticipated[msg.sender] = true;
+        deposits[msg.sender] = msg.value;
 
         emit PlayerJoined(msg.sender);
     }
@@ -56,7 +61,10 @@ contract Lottery is VRFConsumerBase {
     }
 
     // Chainlink VRF callback
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override noReentrant {
+        require(isLotteryActive, "Lottery is not active or already finalized");
+        require(players.length > 0, "No players in the lottery");
+
         randomResult = randomness;
         uint256 winnerIndex = randomness % players.length;
         winner = players[winnerIndex];
@@ -73,23 +81,26 @@ contract Lottery is VRFConsumerBase {
     function resetLotteryState() private {
         for (uint256 i = 0; i < players.length; i++) {
             hasParticipated[players[i]] = false;
+            deposits[players[i]] = 0;
         }
         players = new address ;
         isLotteryActive = false;
     }
 
     // Anulowanie loterii i zwrot wpłat
-    function cancelLottery() public onlyOwner {
+    function cancelLottery() public onlyOwner noReentrant {
         require(!isLotteryActive, "Cannot cancel while lottery is active");
 
         for (uint256 i = 0; i < players.length; i++) {
-            payable(players[i]).transfer(0.01 ether);
+            payable(players[i]).transfer(deposits[players[i]]);
+            deposits[players[i]] = 0;
         }
         resetLotteryState();
     }
 
     // Dodanie LINK do kontraktu
     function fundWithLink(uint256 amount) public onlyOwner {
+        require(amount > 0, "Amount must be greater than 0");
         require(LINK.transferFrom(msg.sender, address(this), amount), "LINK transfer failed");
     }
 
@@ -98,9 +109,23 @@ contract Lottery is VRFConsumerBase {
         return players;
     }
 
+    // Awaryjne resetowanie loterii
+    function emergencyReset() public onlyOwner {
+        require(isLotteryActive, "Lottery is not active");
+        resetLotteryState();
+    }
+
     // Modyfikator tylko dla właściciela
     modifier onlyOwner() {
         require(msg.sender == owner, "Only owner can call this function");
         _;
+    }
+
+    // Modyfikator zapobiegający reentrancy
+    modifier noReentrant() {
+        require(!locked, "Reentrant call");
+        locked = true;
+        _;
+        locked = false;
     }
 }
