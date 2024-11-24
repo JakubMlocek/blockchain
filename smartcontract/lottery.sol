@@ -1,94 +1,99 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
-// Importacja interfejsu Chainlink VRF
-import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+// Import necessary Chainlink contracts
+import {ConfirmedOwner} from "@chainlink/contracts@1.2.0/src/v0.8/shared/access/ConfirmedOwner.sol";
+import {VRFV2PlusWrapperConsumerBase} from "@chainlink/contracts@1.2.0/src/v0.8/vrf/dev/VRFV2PlusWrapperConsumerBase.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts@1.2.0/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
-contract Lottery is VRFConsumerBase {
-    address public owner;
+contract Lottery2 is VRFV2PlusWrapperConsumerBase, ConfirmedOwner {
     address[] public players;
     address public winner;
     bool public isLotteryActive = false;
     uint256 public maxPlayers = 100;
 
-    // Mapa graczy, którzy już uczestniczą
-    mapping(address => bool) public hasParticipated;
     mapping(address => uint256) public deposits;
 
-    // Chainlink VRF zmienne
-    bytes32 internal keyHash;
-    uint256 internal fee;
-    uint256 public randomResult;
+    uint32 public callbackGasLimit = 100000;
+    uint16 public requestConfirmations = 3;
+    uint32 public numWords = 1;
 
-    // Lock do ochrony przed reentrancy
-    bool private locked = false;
+    address public linkAddress = 0x779877A7B0D9E8603169DdbD7836e478b4624789;
+    address public wrapperAddress = 0x195f15F2d49d693cE265b4fB0fdDbE15b1850Cc1;
 
-    // Wydarzenia
+    uint256 public lastRequestId;
+    mapping(uint256 => bool) public requestFulfilled;
+
     event PlayerJoined(address indexed player);
     event LotteryWinner(address indexed winner);
+    event LotteryStarted();
+    event LotteryEnded();
 
-    // Konstruktor
-    constructor(address vrfCoordinator, address linkToken, bytes32 _keyHash, uint256 _fee)
-        VRFConsumerBase(vrfCoordinator, linkToken)
-    {
-        owner = msg.sender;
-        keyHash = _keyHash;
-        fee = _fee;
+    constructor()
+        ConfirmedOwner(msg.sender)
+        VRFV2PlusWrapperConsumerBase(wrapperAddress)
+    {}
+
+    function startLottery() public onlyOwner {
+        require(!isLotteryActive, "Lottery is already active");
+        isLotteryActive = true;
+        emit LotteryStarted();
     }
 
-    // Udział w loterii
     function joinLottery() public payable {
-        require(!isLotteryActive, "Cannot join while lottery is active");
+        require(isLotteryActive, "Lottery is not active");
         require(players.length < maxPlayers, "Maximum number of players reached");
-        require(!hasParticipated[msg.sender], "You already joined the lottery with this address");
-        require(msg.value == 0.01 ether, "Participation fee is 0.01 ETH");
+        require(msg.value == 0.1 ether, "Participation fee is 0.1 ETH");
 
         players.push(msg.sender);
-        hasParticipated[msg.sender] = true;
         deposits[msg.sender] = msg.value;
 
         emit PlayerJoined(msg.sender);
     }
 
-    // Rozpoczęcie losowania
-    function startLottery() public onlyOwner {
-        require(!isLotteryActive, "Lottery is already active");
+    function finishLottery() public onlyOwner {
+        require(isLotteryActive, "Lottery is not active");
         require(players.length > 1, "At least two players are required");
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK to request randomness");
 
-        isLotteryActive = true;
-        requestRandomness(keyHash, fee);
+        bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
+            VRFV2PlusClient.ExtraArgsV1({nativePayment: true})
+        );
+        (lastRequestId, ) = requestRandomnessPayInNative(
+            callbackGasLimit,
+            requestConfirmations,
+            numWords,
+            extraArgs
+        );
     }
 
-    // Chainlink VRF callback
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override noReentrant {
+    function fulfillRandomWords(
+        uint256 _requestId,
+        uint256[] memory _randomWords
+    ) internal override {
         require(isLotteryActive, "Lottery is not active or already finalized");
         require(players.length > 0, "No players in the lottery");
+        require(!requestFulfilled[_requestId], "Request already fulfilled");
 
-        randomResult = randomness;
-        uint256 winnerIndex = randomness % players.length;
+        requestFulfilled[_requestId] = true;
+        uint256 winnerIndex = _randomWords[0] % players.length;
         winner = players[winnerIndex];
 
-        // Wypłata nagrody
         payable(winner).transfer(address(this).balance);
         emit LotteryWinner(winner);
 
-        // Resetowanie stanu loterii
         resetLotteryState();
+        emit LotteryEnded();
     }
 
-    // Resetowanie stanu loterii
     function resetLotteryState() private {
         for (uint256 i = 0; i < players.length; i++) {
-            hasParticipated[players[i]] = false;
             deposits[players[i]] = 0;
         }
-        players = new address ;
+        players = new address[](0);
         isLotteryActive = false;
     }
 
-    // Anulowanie loterii i zwrot wpłat
-    function cancelLottery() public onlyOwner noReentrant {
+    function cancelLottery() public onlyOwner {
         require(!isLotteryActive, "Cannot cancel while lottery is active");
 
         for (uint256 i = 0; i < players.length; i++) {
@@ -98,34 +103,8 @@ contract Lottery is VRFConsumerBase {
         resetLotteryState();
     }
 
-    // Dodanie LINK do kontraktu
-    function fundWithLink(uint256 amount) public onlyOwner {
-        require(amount > 0, "Amount must be greater than 0");
-        require(LINK.transferFrom(msg.sender, address(this), amount), "LINK transfer failed");
-    }
-
-    // Pobieranie listy graczy
     function getPlayers() public view returns (address[] memory) {
         return players;
     }
 
-    // Awaryjne resetowanie loterii
-    function emergencyReset() public onlyOwner {
-        require(isLotteryActive, "Lottery is not active");
-        resetLotteryState();
-    }
-
-    // Modyfikator tylko dla właściciela
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
-        _;
-    }
-
-    // Modyfikator zapobiegający reentrancy
-    modifier noReentrant() {
-        require(!locked, "Reentrant call");
-        locked = true;
-        _;
-        locked = false;
-    }
 }
